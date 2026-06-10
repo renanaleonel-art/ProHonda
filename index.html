@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; font-family: Arial, sans-serif; overflow: hidden; }
+
+    #overlay {
+      position: fixed; inset: 0; z-index: 999;
+      background: radial-gradient(ellipse at center bottom, #1a0000 0%, #050505 70%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+    }
+    #overlay.gone { display: none; }
+    #overlay img { width: 180px; animation: glow 2s ease-in-out infinite; }
+    @keyframes glow {
+      0%,100% { filter: drop-shadow(0 0 8px rgba(224,0,0,0.4)); }
+      50%      { filter: drop-shadow(0 0 24px rgba(224,0,0,1)); }
+    }
+    #overlay p { color: #555; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; }
+    #overlay h1 { color: #fff; font-size: 22px; font-weight: 900; text-align: center; line-height: 1.2; }
+    #overlay h1 em { color: #E00000; font-style: normal; display: block; }
+
+    #btnStart {
+      background: #E00000; color: #fff; border: none;
+      padding: 16px 48px; font-size: 12px; font-weight: 800;
+      letter-spacing: 4px; text-transform: uppercase;
+      border-radius: 2px; cursor: pointer;
+      box-shadow: 0 0 20px rgba(224,0,0,0.5);
+      margin-top: 8px;
+    }
+
+    #hint { color: #2a2a2a; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; }
+
+    /* HUD elements — hidden until target found */
+    .hud { position: fixed; z-index: 50; opacity: 0; transition: opacity .5s; pointer-events: none; }
+    .hud.show { opacity: 1; }
+
+    #hud-logo { top: 14px; left: 14px; }
+    #hud-logo img { width: 90px; filter: drop-shadow(0 0 8px rgba(224,0,0,0.5)); }
+
+    #hud-prod { top: 14px; right: 14px; background: rgba(0,0,0,0.78); border: 1px solid rgba(224,0,0,0.4); border-radius: 4px; padding: 8px 12px; text-align: right; backdrop-filter: blur(10px); }
+    #hud-prod .g { font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 2px; }
+    #hud-prod .a { font-size: 9px; color: #E00000; letter-spacing: 2px; }
+    #hud-prod .v { font-size: 7px; color: #444; }
+
+    #badge { top: 50%; left: 14px; transform: translateY(-50%); background: rgba(0,0,0,0.78); border: 1px solid rgba(224,0,0,0.4); border-right: 3px solid #E00000; border-radius: 4px 0 0 4px; padding: 12px 14px; backdrop-filter: blur(10px); transition-delay: .2s; }
+    #badge .n { font-size: 28px; font-weight: 900; color: #E00000; line-height: 1; }
+    #badge .l { font-size: 8px; color: #fff; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+    #badge .s { font-size: 7px; color: #555; letter-spacing: 1px; text-transform: uppercase; }
+
+    #specs { top: 50%; right: 14px; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; transition-delay: .4s; }
+    .sp { background: rgba(0,0,0,0.78); border-left: 2px solid #E00000; border-radius: 0 4px 4px 0; padding: 8px 10px; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 7px; }
+    .sp-t { font-size: 8px; font-weight: 700; color: #fff; letter-spacing: 1px; text-transform: uppercase; line-height: 1.4; }
+    .sp-t small { display: block; color: #444; font-weight: 400; font-size: 7px; }
+
+    #cta { bottom: 0; left: 0; right: 0; background: linear-gradient(0deg,rgba(0,0,0,0.95) 65%,transparent); padding: 16px 20px 28px; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; transition-delay: .6s; }
+    #cta.show { pointer-events: all; }
+    #cta img { width: 100px; filter: drop-shadow(0 0 8px rgba(224,0,0,0.3)); }
+    #cta .tag { font-size: 14px; font-weight: 900; color: #fff; letter-spacing: 2px; text-transform: uppercase; text-align: center; line-height: 1.2; }
+    #cta .tag em { color: #E00000; font-style: normal; }
+    #cta .line { width: 60px; height: 2px; background: repeating-linear-gradient(90deg,#E00000 0,#E00000 5px,transparent 5px,transparent 10px); }
+    #cta .btns { display: flex; gap: 8px; }
+    #cta .bp { background: #E00000; color: #fff; border: none; padding: 11px 20px; font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; border-radius: 2px; text-decoration: none; }
+    #cta .bs { background: rgba(0,0,0,0.7); color: #666; border: 1px solid #222; padding: 11px 14px; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-radius: 2px; text-decoration: none; }
+
+    #mbar { bottom: 108px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background: rgba(0,0,0,0.82); border: 1px solid #1a1a1a; border-radius: 30px; padding: 5px; backdrop-filter: blur(12px); transition-delay: .8s; }
+    .mb { padding: 7px 16px; border-radius: 24px; border: none; background: transparent; color: #444; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: all .25s; pointer-events: all; }
+    .mb.on { background: #E00000; color: #fff; box-shadow: 0 0 12px rgba(224,0,0,0.5); }
+
+    /* Telemetria */
+    #telem { position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,0.92); backdrop-filter: blur(6px); padding: 80px 20px 150px; display: none; flex-direction: column; justify-content: center; }
+    #telem.show { display: flex; }
+    .te { font-size: 9px; letter-spacing: 4px; color: #E00000; text-transform: uppercase; margin-bottom: 4px; }
+    .tt { font-size: 18px; font-weight: 900; color: #fff; margin-bottom: 20px; }
+    .tr { display: flex; align-items: center; padding: 11px 0; border-bottom: 1px solid #0d0d0d; }
+    .trl { font-size: 9px; color: #555; letter-spacing: 2px; text-transform: uppercase; width: 90px; }
+    .trb { flex: 1; height: 3px; background: #111; border-radius: 2px; overflow: hidden; margin: 0 14px; }
+    .trbf { height: 100%; background: linear-gradient(90deg,#E00000,#ff5555); border-radius: 2px; animation: fill 1.5s ease-out forwards; }
+    @keyframes fill { from { width: 0 !important; } }
+    .trv { font-size: 11px; font-weight: 700; color: #E00000; width: 64px; text-align: right; }
+    .tp { margin-top: 18px; background: rgba(224,0,0,0.05); border: 1px solid rgba(224,0,0,0.2); border-radius: 8px; padding: 14px; display: flex; gap: 14px; align-items: center; }
+    .tp img { width: 80px; }
+    .tpg { font-size: 20px; font-weight: 900; color: #fff; }
+    .tpa { font-size: 9px; color: #E00000; letter-spacing: 2px; text-transform: uppercase; }
+    .tpd { font-size: 9px; color: #444; margin-top: 6px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <a-scene
+    mindar-image="imageTargetSrc: targets.mind; filterMinCF: 0.0001; filterBeta: 0.001;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+  >
+    <a-assets>
+      <video id="arvideo" src="prohonda_video.mp4" playsinline webkit-playsinline muted loop crossorigin="anonymous"></video>
+    </a-assets>
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-plane src="#arvideo" position="0 1.8 0.01" scale="1.8 3.2 1"
+        material="shader: flat; transparent: false; side: front;"></a-plane>
+      <a-plane position="0 0.08 0.02" scale="1.8 0.22 1"
+        material="color: #E00000; opacity: 0.3; shader: flat; transparent: true;"
+        animation="property: material.opacity; from: 0.1; to: 0.5; dur: 700; dir: alternate; loop: true;">
+      </a-plane>
+    </a-entity>
+  </a-scene>
+
+  <!-- Overlay inicial -->
+  <div id="overlay">
+    <p>Realidade Aumentada</p>
+    <img src="logo.png" alt="Pro Honda">
+    <h1>Da Pista<em>Para Sua Garagem</em></h1>
+    <p>TCR South America · +600 Vitorias</p>
+    <button id="btnStart">ABRIR CAMERA</button>
+    <p id="hint">Aponte para o logo Pro Honda no expositor</p>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud-logo" class="hud"><img src="logo.png" alt="Pro Honda"></div>
+  <div id="hud-prod" class="hud">
+    <div class="g">5W30</div>
+    <div class="a">API SP</div>
+    <div class="v">Honda Motor Oil 1L</div>
+  </div>
+  <div id="badge" class="hud">
+    <div class="n">+600</div>
+    <div class="l">Vitorias</div>
+    <div class="s">TCR South America</div>
+  </div>
+  <div id="specs" class="hud">
+    <div class="sp"><span>🛡️</span><div class="sp-t">Protecao<small>Superior</small></div></div>
+    <div class="sp"><span>⚡</span><div class="sp-t">Maxima<small>Performance</small></div></div>
+    <div class="sp"><span>🌡️</span><div class="sp-t">Alta<small>Temperatura</small></div></div>
+  </div>
+  <div id="cta" class="hud">
+    <img src="logo.png" alt="Pro Honda">
+    <div class="tag">Da Pista <em>Para Sua Garagem</em></div>
+    <div class="line"></div>
+    <div class="btns">
+      <a class="bp" href="https://wa.me/5511999999999?text=Quero+saber+mais+sobre+Pro+Honda+5W30" target="_blank">Saiba Mais</a>
+      <a class="bs" href="https://wa.me/?text=Experiencia+AR+Pro+Honda+TCR!" target="_blank">Compartilhar</a>
+    </div>
+  </div>
+  <div id="mbar" class="hud">
+    <button class="mb on" onclick="setMode('ar')">AR</button>
+    <button class="mb" onclick="setMode('telemetria')">Telemetria</button>
+    <button class="mb" onclick="setMode('produto')">Produto</button>
+  </div>
+
+  <!-- Telemetria -->
+  <div id="telem">
+    <div class="te">TCR South America</div>
+    <div class="tt">Tecnologia da Pista para o Produto</div>
+    <div class="tr"><div class="trl">Velocidade</div><div class="trb"><div class="trbf" style="width:92%"></div></div><div class="trv">248 km/h</div></div>
+    <div class="tr"><div class="trl">RPM Motor</div><div class="trb"><div class="trbf" style="width:86%"></div></div><div class="trv">8.400</div></div>
+    <div class="tr"><div class="trl">Temp. Oleo</div><div class="trb"><div class="trbf" style="width:78%"></div></div><div class="trv">115 C</div></div>
+    <div class="tr"><div class="trl">Pressao</div><div class="trb"><div class="trbf" style="width:72%"></div></div><div class="trv">4.2 bar</div></div>
+    <div class="tp">
+      <img src="logo.png" alt="Pro Honda">
+      <div>
+        <div class="tpg">5W30 API SP</div>
+        <div class="tpa">Fluidos e Lubrificantes</div>
+        <div class="tpd">Tecnologia TCR. Protecao maxima para o seu Honda.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Fecha overlay ao clicar — disparo direto, sem delay
+    document.getElementById('btnStart').addEventListener('click', function() {
+      document.getElementById('overlay').classList.add('gone');
+    });
+
+    // Eventos AR
+    var scene = document.querySelector('a-scene');
+    scene.addEventListener('loaded', function() {
+      var tgt = document.querySelector('[mindar-image-target]');
+      tgt.addEventListener('targetFound', function() {
+        document.querySelectorAll('.hud').forEach(function(el) {
+          el.classList.add('show');
+        });
+        document.getElementById('arvideo').play().catch(function(){});
+      });
+      tgt.addEventListener('targetLost', function() {
+        document.getElementById('arvideo').pause();
+      });
+    });
+
+    function setMode(m) {
+      document.querySelectorAll('.mb').forEach(function(b, i) {
+        b.classList.toggle('on', ['ar','telemetria','produto'][i] === m);
+      });
+      document.getElementById('telem').classList.toggle('show', m === 'telemetria');
+    }
+  </script>
+</body>
+</html>

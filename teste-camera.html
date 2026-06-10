@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    body { margin: 0; }
+    #msg {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.8); color: #fff; padding: 12px 20px;
+      border-radius: 8px; font-family: Arial; font-size: 14px;
+      z-index: 999; text-align: center; border: 1px solid #E00000;
+    }
+  </style>
+</head>
+<body>
+  <div id="msg">Carregando MindAR...<br><small id="sub">aguarde</small></div>
+
+  <a-scene
+    mindar-image="imageTargetSrc: targets.mind;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+  >
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-box color="#E00000" position="0 0 0" scale="0.5 0.5 0.5"></a-box>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    var scene = document.querySelector('a-scene');
+    var msg = document.getElementById('msg');
+    var sub = document.getElementById('sub');
+
+    scene.addEventListener('loaded', function() {
+      msg.style.borderColor = '#00ff00';
+      sub.textContent = 'Cena carregada! Aponte para o logo.';
+    });
+
+    scene.addEventListener('arReady', function() {
+      msg.style.background = 'rgba(0,100,0,0.9)';
+      msg.innerHTML = 'Camera ATIVA!<br><small>Aponte para o logo Pro Honda</small>';
+    });
+
+    scene.addEventListener('arError', function(e) {
+      msg.style.background = 'rgba(100,0,0,0.9)';
+      msg.innerHTML = 'ERRO AR: ' + (e.detail || 'desconhecido') + '<br><small>Verifique o console</small>';
+    });
+
+    var target = document.querySelector('[mindar-image-target]');
+    if (target) {
+      target.addEventListener('targetFound', function() {
+        msg.innerHTML = 'TARGET ENCONTRADO!<br><small>Cubo vermelho visivel</small>';
+        msg.style.background = 'rgba(0,150,0,0.9)';
+      });
+    }
+  </script>
+</body>
+</html>

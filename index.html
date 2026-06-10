@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    body { margin: 0; background: #000; font-family: Arial, sans-serif; }
+    #overlay {
+      position: fixed; inset: 0; z-index: 999;
+      background: #000;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+    }
+    #overlay.gone { display: none; }
+    #overlay img { width: 180px; }
+    #btnStart {
+      background: #E00000; color: #fff; border: none;
+      padding: 18px 52px; font-size: 14px; font-weight: 800;
+      letter-spacing: 3px; text-transform: uppercase;
+      border-radius: 4px; cursor: pointer;
+    }
+    #status {
+      color: #E00000; font-size: 12px; letter-spacing: 2px;
+      text-transform: uppercase; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <a-scene
+    mindar-image="imageTargetSrc: targets.mind; filterMinCF: 0.0001; filterBeta: 0.001;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+  >
+    <a-assets>
+      <video id="arvideo" src="prohonda_video.mp4" playsinline webkit-playsinline muted loop crossorigin="anonymous"></video>
+    </a-assets>
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-plane src="#arvideo" position="0 1.8 0.01" scale="1.8 3.2 1"
+        material="shader: flat; transparent: false; side: front;"></a-plane>
+    </a-entity>
+  </a-scene>
+
+  <div id="overlay">
+    <img src="logo.png" alt="Pro Honda">
+    <div id="status">Pronto para ativar</div>
+    <button id="btnStart">ATIVAR CAMERA</button>
+  </div>
+
+  <script>
+    document.getElementById('btnStart').addEventListener('click', function() {
+      document.getElementById('status').textContent = 'Abrindo camera...';
+      document.getElementById('overlay').classList.add('gone');
+    });
+
+    document.querySelector('a-scene').addEventListener('arReady', function() {
+      console.log('AR READY');
+    });
+
+    document.querySelector('a-scene').addEventListener('arError', function(e) {
+      document.getElementById('overlay').classList.remove('gone');
+      document.getElementById('status').textContent = 'ERRO: ' + JSON.stringify(e.detail);
+    });
+
+    document.querySelector('a-scene').addEventListener('loaded', function() {
+      var tgt = document.querySelector('[mindar-image-target]');
+      tgt.addEventListener('targetFound', function() {
+        document.getElementById('arvideo').play().catch(function(){});
+      });
+      tgt.addEventListener('targetLost', function() {
+        document.getElementById('arvideo').pause();
+      });
+    });
+  </script>
+</body>
+</html>

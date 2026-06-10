@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Pro Honda TCR — AR</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: Arial, sans-serif; }
+
+    #splash {
+      position: fixed; inset: 0; z-index: 100;
+      background: radial-gradient(ellipse at center bottom, #1a0000 0%, #050505 70%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+      transition: opacity 0.5s;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    #splash img { width: 200px; animation: glow 2s ease-in-out infinite; }
+    @keyframes glow {
+      0%,100% { filter: drop-shadow(0 0 8px rgba(224,0,0,0.4)); }
+      50%      { filter: drop-shadow(0 0 28px rgba(224,0,0,1)); }
+    }
+    .sp-eye   { font-size: 9px; letter-spacing: 6px; color: #E00000; text-transform: uppercase; }
+    .sp-title { font-size: 24px; font-weight: 900; color: #fff; text-align: center; line-height: 1.2; }
+    .sp-title em { color: #E00000; font-style: normal; display: block; }
+    .sp-line  { width: 60px; height: 2px; background: repeating-linear-gradient(90deg,#E00000 0,#E00000 5px,transparent 5px,transparent 10px); }
+    .sp-sub   { font-size: 9px; color: #333; letter-spacing: 3px; text-transform: uppercase; }
+    #btn {
+      background: #E00000; color: #fff; border: none;
+      padding: 16px 48px; font-size: 12px; font-weight: 800;
+      letter-spacing: 4px; text-transform: uppercase;
+      border-radius: 2px; cursor: pointer;
+      box-shadow: 0 0 24px rgba(224,0,0,0.5);
+    }
+    .sp-tip { font-size: 9px; color: #2a2a2a; letter-spacing: 2px; text-transform: uppercase; }
+
+    #ar-scene {
+      display: none; position: fixed;
+      inset: 0; width: 100%; height: 100%;
+    }
+    #ar-scene.active { display: block; }
+
+    #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; display: none; }
+    #hud.active { display: block; }
+
+    #hud-logo { position: absolute; top: 14px; left: 14px; pointer-events: none; }
+    #hud-logo img { width: 90px; filter: drop-shadow(0 0 8px rgba(224,0,0,0.5)); }
+
+    #hud-prod { position: absolute; top: 14px; right: 14px; background: rgba(0,0,0,0.78); border: 1px solid rgba(224,0,0,0.4); border-radius: 4px; padding: 8px 12px; text-align: right; backdrop-filter: blur(10px); }
+    #hud-prod .g { font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 2px; }
+    #hud-prod .a { font-size: 9px; color: #E00000; letter-spacing: 2px; }
+    #hud-prod .v { font-size: 7px; color: #444; }
+
+    #badge { position: absolute; top: 50%; left: 14px; transform: translateY(-50%); background: rgba(0,0,0,0.78); border: 1px solid rgba(224,0,0,0.4); border-right: 3px solid #E00000; border-radius: 4px 0 0 4px; padding: 12px 14px; backdrop-filter: blur(10px); }
+    #badge .n { font-size: 28px; font-weight: 900; color: #E00000; line-height: 1; }
+    #badge .l { font-size: 8px; color: #fff; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+    #badge .s { font-size: 7px; color: #555; letter-spacing: 1px; text-transform: uppercase; }
+
+    #specs { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; }
+    .sp { background: rgba(0,0,0,0.78); border-left: 2px solid #E00000; border-radius: 0 4px 4px 0; padding: 8px 10px; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 7px; }
+    .sp-t { font-size: 8px; font-weight: 700; color: #fff; letter-spacing: 1px; text-transform: uppercase; line-height: 1.4; }
+    .sp-t small { display: block; color: #444; font-weight: 400; font-size: 7px; }
+
+    #cta { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(0deg,rgba(0,0,0,0.95) 65%,transparent); padding: 16px 20px 28px; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: auto; }
+    #cta img { width: 100px; filter: drop-shadow(0 0 8px rgba(224,0,0,0.3)); }
+    #cta .tag { font-size: 14px; font-weight: 900; color: #fff; letter-spacing: 2px; text-transform: uppercase; text-align: center; line-height: 1.2; }
+    #cta .tag em { color: #E00000; font-style: normal; }
+    #cta .line { width: 60px; height: 2px; background: repeating-linear-gradient(90deg,#E00000 0,#E00000 5px,transparent 5px,transparent 10px); }
+    #cta .btns { display: flex; gap: 8px; }
+    #cta .bp { background: #E00000; color: #fff; border: none; padding: 11px 20px; font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; border-radius: 2px; text-decoration: none; pointer-events: auto; }
+    #cta .bs { background: rgba(0,0,0,0.7); color: #666; border: 1px solid #222; padding: 11px 14px; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-radius: 2px; text-decoration: none; pointer-events: auto; }
+
+    #mbar { position: absolute; bottom: 108px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background: rgba(0,0,0,0.82); border: 1px solid #1a1a1a; border-radius: 30px; padding: 5px; backdrop-filter: blur(12px); pointer-events: auto; }
+    .mb { padding: 7px 16px; border-radius: 24px; border: none; background: transparent; color: #444; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: all .25s; }
+    .mb.on { background: #E00000; color: #fff; box-shadow: 0 0 12px rgba(224,0,0,0.5); }
+
+    #telem { position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,0.92); backdrop-filter: blur(6px); padding: 80px 20px 150px; display: none; flex-direction: column; justify-content: center; pointer-events: auto; }
+    #telem.show { display: flex; }
+    .te { font-size: 9px; letter-spacing: 4px; color: #E00000; text-transform: uppercase; margin-bottom: 4px; }
+    .tt { font-size: 18px; font-weight: 900; color: #fff; margin-bottom: 20px; }
+    .tr { display: flex; align-items: center; padding: 11px 0; border-bottom: 1px solid #0d0d0d; }
+    .trl { font-size: 9px; color: #555; letter-spacing: 2px; text-transform: uppercase; width: 90px; }
+    .trb { flex: 1; height: 3px; background: #111; border-radius: 2px; overflow: hidden; margin: 0 14px; }
+    .trbf { height: 100%; background: linear-gradient(90deg,#E00000,#ff5555); border-radius: 2px; animation: fill 1.5s ease-out forwards; }
+    @keyframes fill { from { width: 0 !important; } }
+    .trv { font-size: 11px; font-weight: 700; color: #E00000; width: 64px; text-align: right; }
+    .tp { margin-top: 18px; background: rgba(224,0,0,0.05); border: 1px solid rgba(224,0,0,0.2); border-radius: 8px; padding: 14px; display: flex; gap: 14px; align-items: center; }
+    .tp img { width: 80px; }
+    .tpg { font-size: 20px; font-weight: 900; color: #fff; }
+    .tpa { font-size: 9px; color: #E00000; letter-spacing: 2px; text-transform: uppercase; }
+    .tpd { font-size: 9px; color: #444; margin-top: 6px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="sp-eye">Realidade Aumentada</div>
+  <img src="logo.png" alt="Pro Honda">
+  <div class="sp-title">Da Pista<em>Para Sua Garagem</em></div>
+  <div class="sp-line"></div>
+  <div class="sp-sub">TCR South America · +600 Vitorias</div>
+  <button id="btn" onclick="startAR()">ABRIR CAMERA</button>
+  <div class="sp-tip">Aponte para o logo Pro Honda no expositor</div>
+</div>
+
+<!-- AR SCENE — autoStart: false igual ao WR-V -->
+<a-scene id="ar-scene"
+  mindar-image="imageTargetSrc: targets.mind; autoStart: false; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001"
+  color-space="sRGB"
+  renderer="colorManagement: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false">
+
+  <a-assets>
+    <video id="arvideo" src="prohonda_video.mp4" playsinline webkit-playsinline muted loop crossorigin="anonymous"></video>
+  </a-assets>
+
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+  <a-entity id="target" mindar-image-target="targetIndex: 0">
+    <a-plane src="#arvideo" position="0 1.8 0.01" scale="1.8 3.2 1"
+      material="shader: flat; transparent: false; side: front;"></a-plane>
+    <a-plane position="0 0.08 0.02" scale="1.8 0.22 1"
+      material="color: #E00000; opacity: 0.3; shader: flat; transparent: true;"
+      animation="property: material.opacity; from: 0.1; to: 0.5; dur: 700; dir: alternate; loop: true;">
+    </a-plane>
+  </a-entity>
+</a-scene>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-logo"><img src="logo.png" alt="Pro Honda"></div>
+  <div id="hud-prod">
+    <div class="g">5W30</div>
+    <div class="a">API SP</div>
+    <div class="v">Honda Motor Oil 1L</div>
+  </div>
+  <div id="badge">
+    <div class="n">+600</div>
+    <div class="l">Vitorias</div>
+    <div class="s">TCR South America</div>
+  </div>
+  <div id="specs">
+    <div class="sp"><span>&#128737;</span><div class="sp-t">Protecao<small>Superior</small></div></div>
+    <div class="sp"><span>&#9889;</span><div class="sp-t">Maxima<small>Performance</small></div></div>
+    <div class="sp"><span>&#127777;</span><div class="sp-t">Alta<small>Temperatura</small></div></div>
+  </div>
+  <div id="cta">
+    <img src="logo.png" alt="Pro Honda">
+    <div class="tag">Da Pista <em>Para Sua Garagem</em></div>
+    <div class="line"></div>
+    <div class="btns">
+      <a class="bp" href="https://wa.me/5511999999999?text=Quero+saber+mais+sobre+Pro+Honda+5W30" target="_blank">Saiba Mais</a>
+      <a class="bs" href="https://wa.me/?text=Experiencia+AR+Pro+Honda+TCR!" target="_blank">Compartilhar</a>
+    </div>
+  </div>
+  <div id="mbar">
+    <button class="mb on" onclick="setMode('ar')">AR</button>
+    <button class="mb" onclick="setMode('telemetria')">Telemetria</button>
+    <button class="mb" onclick="setMode('produto')">Produto</button>
+  </div>
+</div>
+
+<!-- TELEMETRIA -->
+<div id="telem">
+  <div class="te">TCR South America</div>
+  <div class="tt">Tecnologia da Pista para o Produto</div>
+  <div class="tr"><div class="trl">Velocidade</div><div class="trb"><div class="trbf" style="width:92%"></div></div><div class="trv">248 km/h</div></div>
+  <div class="tr"><div class="trl">RPM Motor</div><div class="trb"><div class="trbf" style="width:86%"></div></div><div class="trv">8.400</div></div>
+  <div class="tr"><div class="trl">Temp. Oleo</div><div class="trb"><div class="trbf" style="width:78%"></div></div><div class="trv">115 C</div></div>
+  <div class="tr"><div class="trl">Pressao</div><div class="trb"><div class="trbf" style="width:72%"></div></div><div class="trv">4.2 bar</div></div>
+  <div class="tp">
+    <img src="logo.png" alt="Pro Honda">
+    <div>
+      <div class="tpg">5W30 API SP</div>
+      <div class="tpa">Fluidos e Lubrificantes</div>
+      <div class="tpd">Tecnologia TCR. Protecao maxima para o seu Honda.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function startAR() {
+  var scene = document.getElementById('ar-scene');
+  scene.classList.add('active');
+  document.getElementById('splash').classList.add('hidden');
+  document.getElementById('hud').classList.add('active');
+
+  scene.addEventListener('loaded', function() {
+    var sys = scene.systems['mindar-image-system'];
+    if (sys) sys.start();
+  }, { once: true });
+
+  // Fallback se já carregado
+  setTimeout(function() {
+    var sys = scene.systems['mindar-image-system'];
+    if (sys && !sys.started) sys.start();
+  }, 2000);
+
+  document.getElementById('target').addEventListener('targetFound', function() {
+    document.getElementById('arvideo').play().catch(function(){});
+  });
+  document.getElementById('target').addEventListener('targetLost', function() {
+    document.getElementById('arvideo').pause();
+  });
+}
+
+function setMode(m) {
+  document.querySelectorAll('.mb').forEach(function(b, i) {
+    b.classList.toggle('on', ['ar','telemetria','produto'][i] === m);
+  });
+  document.getElementById('telem').classList.toggle('show', m === 'telemetria');
+}
+</script>
+
+</body>
+</html>
